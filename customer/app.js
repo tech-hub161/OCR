@@ -621,7 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    // Auto-complete unsold input based on purchase ranges
+    // Auto-complete unsold input based on purchase ranges (last 3 digits)
     function autoCompleteUnsoldInput(input) {
         const row = input.closest('tr');
         const purchaseInput = row.querySelector('.purchase-input');
@@ -632,18 +632,18 @@ document.addEventListener('DOMContentLoaded', () => {
         let inputValue = input.value;
         let lastEntry = inputValue.split(',').pop().trim();
         
-        // Check if last entry is exactly 2 digits
-        if (lastEntry.length === 2 && /^\d{2}$/.test(lastEntry)) {
+        // Check if last entry is exactly 3 digits
+        if (lastEntry.length === 3 && /^\d{3}$/.test(lastEntry)) {
             // Extract all possible ticket numbers from purchase ranges
             const allTickets = extractTicketsFromRanges(purchaseRanges);
             
-            // Find matching tickets that end with these 2 digits
-            const matchingTickets = allTickets.filter(ticket => ticket.slice(-2) === lastEntry);
+            // Find matching tickets that end with these 3 digits
+            const matchingTickets = allTickets.filter(ticket => ticket.slice(-3) === lastEntry);
             if (matchingTickets.length === 0) return;
 
             // current entries (excluding empty trailing)
             let entries = inputValue.split(',').map(e => e.trim()).filter(e => e !== '');
-            // remove the 2-digit partial entry
+            // remove the 3-digit partial entry
             entries.pop();
 
             let chosen = null;
@@ -662,7 +662,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Avoid duplicate unsold entries: if chosen already exists, try to pick another match not already present
+            // If chosen already exists in current entries, pick another available match
             if (entries.includes(chosen)) {
                 const alt = matchingTickets.find(t => !entries.includes(t));
                 if (alt) chosen = alt;
@@ -672,11 +672,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            // Insert chosen and focus so user can continue entering next numbers
             entries.push(chosen);
             input.value = entries.join(',') + ',';
-            // Position cursor at the end (after the comma)
+            input.focus();
             setTimeout(() => {
-                input.setSelectionRange(input.value.length, input.value.length);
+                try { input.setSelectionRange(input.value.length, input.value.length); } catch(e){}
             }, 0);
         }
     }
