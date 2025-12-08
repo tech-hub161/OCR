@@ -638,24 +638,46 @@ document.addEventListener('DOMContentLoaded', () => {
             const allTickets = extractTicketsFromRanges(purchaseRanges);
             
             // Find matching tickets that end with these 2 digits
-            const matchingTickets = allTickets.filter(ticket => 
-                ticket.slice(-2) === lastEntry
-            );
-            
-            if (matchingTickets.length > 0) {
-                // Replace the 2-digit entry with the full matching ticket number and add comma
-                let entries = inputValue.split(',').map(e => e.trim()).filter(e => e !== '');
-                entries.pop(); // Remove the 2-digit entry
-                entries.push(matchingTickets[0]); // Add the completed ticket number
-                
-                // Add comma and space for next entry
-                input.value = entries.join(',') + ',';
-                
-                // Position cursor at the end (after the comma)
-                setTimeout(() => {
-                    input.setSelectionRange(input.value.length, input.value.length);
-                }, 0);
+            const matchingTickets = allTickets.filter(ticket => ticket.slice(-2) === lastEntry);
+            if (matchingTickets.length === 0) return;
+
+            // current entries (excluding empty trailing)
+            let entries = inputValue.split(',').map(e => e.trim()).filter(e => e !== '');
+            // remove the 2-digit partial entry
+            entries.pop();
+
+            let chosen = null;
+            if (matchingTickets.length === 1) {
+                chosen = matchingTickets[0];
+            } else {
+                // Ask user to choose from matching tickets
+                const options = matchingTickets.map((t, idx) => `${idx+1}. ${t}`).join('\n');
+                const choice = prompt(`Multiple matches found for suffix "${lastEntry}". Choose one by number:\n${options}`);
+                const idx = parseInt(choice, 10);
+                if (!isNaN(idx) && idx >= 1 && idx <= matchingTickets.length) {
+                    chosen = matchingTickets[idx - 1];
+                } else {
+                    // if invalid choice, do nothing
+                    return;
+                }
             }
+
+            // Avoid duplicate unsold entries: if chosen already exists, try to pick another match not already present
+            if (entries.includes(chosen)) {
+                const alt = matchingTickets.find(t => !entries.includes(t));
+                if (alt) chosen = alt;
+                else {
+                    alert('No matching tickets available that are not already entered as unsold.');
+                    return;
+                }
+            }
+
+            entries.push(chosen);
+            input.value = entries.join(',') + ',';
+            // Position cursor at the end (after the comma)
+            setTimeout(() => {
+                input.setSelectionRange(input.value.length, input.value.length);
+            }, 0);
         }
     }
     
@@ -831,17 +853,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const shorthandUnsold = (rowData.unsoldRaw || '').split(',').map(n => n.trim()).filter(Boolean);
-        const unsoldNumbers = [...new Set(shorthandUnsold)];
-        rowData.unsoldNumbers = unsoldNumbers;
+        // Remove duplicates while preserving order
+        const uniqueUnsold = [...new Set(shorthandUnsold)];
 
-        const unsoldNumbersWithStatus = unsoldNumbers.map(num => ({
+        // If user entered duplicates, try to replace duplicates with other tickets from purchaseSet
+        const purchaseArray = Array.from(purchaseSet);
+        let finalUnsold = [...uniqueUnsold];
+        let needed = shorthandUnsold.length - uniqueUnsold.length;
+        let pi = 0;
+        while (needed > 0 && pi < purchaseArray.length) {
+            const candidate = purchaseArray[pi++];
+            if (!finalUnsold.includes(candidate)) {
+                finalUnsold.push(candidate);
+                needed--;
+            }
+        }
+
+        rowData.unsoldNumbers = finalUnsold;
+
+        const unsoldNumbersWithStatus = rowData.unsoldNumbers.map(num => ({
             number: num,
             isValid: purchaseSet.has(num)
         }));
         rowData.unsoldNumbersWithStatus = unsoldNumbersWithStatus;
 
-        const validUnsoldNumbers = new Set(unsoldNumbers.filter(num => purchaseSet.has(num)));
-        
+        const validUnsoldNumbers = new Set(rowData.unsoldNumbers.filter(num => purchaseSet.has(num)));
+
         rowData.soldNumbers = Array.from(purchaseSet).filter(num => !validUnsoldNumbers.has(num));
         rowData.soldRanges = compressNumberList(rowData.soldNumbers);
 
