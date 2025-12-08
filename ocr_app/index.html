@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dear Lottery Result Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+        }
+        /* Custom styling for the result table */
+        .prize-table th, .prize-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: top;
+        }
+        .prize-table th {
+            background-color: #3b82f6; /* Blue */
+            color: white;
+            font-weight: 600;
+        }
+        .prize-table tr:nth-child(even) {
+            background-color: #eff6ff; /* Light blue stripe */
+        }
+        .prize-table td {
+            word-break: break-all;
+        }
+        .prize-row:hover {
+            background-color: #dbeafe !important;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #fff;
+            animation: spin 1s ease infinite;
+        }
+        .test-class {
+            color: red;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div id="app" class="max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold text-blue-700 mb-2">Lottery Result Extractor</h1>
+            <p class="text-lg text-gray-600">Complete tracker with Draw Time and 100-number 5th Prize validation.</p>
+        </header>
+
+        <!-- Image Upload and Extraction Card -->
+        <div class="bg-white p-6 rounded-xl shadow-2xl mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">1. Upload Result Image</h2>
+            <div class="mb-4">
+                <label for="imageUpload" class="block text-sm font-medium text-gray-700 mb-1">Select Lottery Draw Image</label>
+                <input type="file" id="imageUpload" accept="image/*" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <button id="extractButton" class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-150 shadow-lg flex items-center justify-center" disabled>
+                <span id="buttonText">Extract Numbers from Image</span>
+                <div id="loadingSpinner" class="spinner ml-3 hidden"></div>
+            </button>
+            <div id="extractionMessage" class="mt-4 p-3 rounded-lg text-center hidden"></div>
+        </div>
+
+        <!-- Input Form Card -->
+        <div class="bg-white p-6 rounded-xl shadow-2xl mb-10">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">2. Review & Save Draw Results</h2>
+            <form id="resultForm">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="drawDate" class="block text-sm font-medium text-gray-700 mb-1">Draw Date</label>
+                        <input type="date" id="drawDate" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="drawTime" class="block text-sm font-medium text-gray-700 mb-1">Draw Time</label>
+                        <select id="drawTime" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-white">
+                            <option value="">Select Time</option>
+                            <option value="1 PM">1 PM</option>
+                            <option value="6 PM">6 PM</option>
+                            <option value="8 PM">8 PM</option>
+                            <option value="Other">Other / Not Specified</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Automatically filled if detected in image.</p>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="firstPrize" class="block text-sm font-medium text-gray-700 mb-1">1st Prize Winner (7-digits/Code)</label>
+                    <input type="text" id="firstPrize" placeholder="e.g., 79E33057" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <div class="mb-4">
+                    <label for="secondPrize" class="block text-sm font-medium text-gray-700 mb-1">2nd Prize Winners (5-digit numbers)</label>
+                    <textarea id="secondPrize" rows="2" placeholder="Comma-separated list (e.g., 15551, 23129...)" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="thirdPrize" class="block text-sm font-medium text-gray-700 mb-1">3rd Prize Winners (4-digit numbers)</label>
+                        <textarea id="thirdPrize" rows="3" placeholder="Comma-separated list (e.g., 0041, 6238...)" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label for="fourthPrize" class="block text-sm font-medium text-gray-700 mb-1">4th Prize Winners (4-digit numbers)</label>
+                        <textarea id="fourthPrize" rows="3" placeholder="Comma-separated list (e.g., 3001, 7211...)" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label for="fifthPrize" class="block text-sm font-medium text-gray-700 mb-1">5th Prize Winners (4-digit numbers)</label>
+                    <textarea id="fifthPrize" rows="4" placeholder="Comma-separated list (large list of 4-digit numbers)" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    <p class="text-xs text-red-500 font-semibold mt-1">
+                        *MANDATORY*: This list must contain exactly 100 winning numbers.
+                    </p>
+                </div>
+                
+                <button type="submit" class="w-full bg-green-500 text-white p-3 rounded-lg font-semibold hover:bg-green-600 transition duration-150 shadow-lg">
+                    Save Draw Results to History
+                </button>
+            </form>
+            <div id="messageBox" class="mt-4 p-3 rounded-lg text-center hidden"></div>
+        </div>
+
+        <!-- History Table Card -->
+        <div class="bg-white p-6 rounded-xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Draw History</h2>
+            
+            <div id="historyDisplay" class="overflow-x-auto">
+                <!-- History Table will be injected here -->
+            </div>
+
+            <button id="clearHistoryBtn" class="mt-4 bg-red-500 text-white p-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition duration-150">
+                Clear All History
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'lotteryDrawHistory';
+        const API_MODEL = 'gemini-2.5-flash-preview-09-2025';
+        const apiKey = "AIzaSyAjFvaOldrRVvsTXqATZP7L4coBrllk2o8"; 
+        const MANDATORY_FIFTH_PRIZE_COUNT = 100;
+        
+        // DOM Elements
+        const form = document.getElementById('resultForm');
+        const historyDisplay = document.getElementById('historyDisplay');
+        const messageBox = document.getElementById('messageBox');
+        const extractionMessage = document.getElementById('extractionMessage');
+        const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+        const imageUpload = document.getElementById('imageUpload');
+        const extractButton = document.getElementById('extractButton');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const buttonText = document.getElementById('buttonText');
+
+        // Form fields
+        const drawTimeField = document.getElementById('drawTime');
+        const firstPrizeField = document.getElementById('firstPrize');
+        const secondPrizeField = document.getElementById('secondPrize');
+        const thirdPrizeField = document.getElementById('thirdPrize');
+        const fourthPrizeField = document.getElementById('fourthPrize');
+        const fifthPrizeField = document.getElementById('fifthPrize');
+
+        // Utility functions
+        function showMessage(element, text, isError = false) {
+            element.textContent = text;
+            element.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-yellow-100', 'text-yellow-700');
+            if (isError) {
+                element.classList.add('bg-red-100', 'text-red-700');
+            } else if (text.includes("successfully")) {
+                element.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                element.classList.add('bg-yellow-100', 'text-yellow-700');
+            }
+        }
+
+        function toggleLoading(isLoading) {
+            extractButton.disabled = isLoading;
+            loadingSpinner.classList.toggle('hidden', !isLoading);
+            buttonText.textContent = isLoading ? 'Processing Image...' : 'Extract Numbers from Image';
+        }
+
+        async function callGeminiApi(payload) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${API_MODEL}:generateContent?key=${apiKey}`;
+            const MAX_RETRIES = 5;
+            let delay = 1000;
+
+            for (let i = 0; i < MAX_RETRIES; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.status === 429 && i < MAX_RETRIES - 1) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                        continue;
+                    }
+
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        throw new Error(`API request failed with status ${response.status}: ${errorBody}`);
+                    }
+
+                    return response.json();
+                } catch (error) {
+                    if (i === MAX_RETRIES - 1) {
+                        throw error;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        async function extractDataFromImage(base64Data, mimeType) {
+            toggleLoading(true);
+            extractionMessage.classList.add('hidden');
+            
+            const systemPrompt = "You are a specialized data extractor for lottery results. Analyze the image and extract the winning numbers for the 1st, 2nd, 3rd, 4th, and 5th prize categories, along with the Draw Time. Output the result ONLY as a JSON object, following the provided schema. Use commas to separate multiple winning numbers. Ensure the Draw Time is one of the following: '1 PM', '6 PM', '8 PM', or 'Other'.";
+
+            const userQuery = "Extract the Draw Time, 1st Prize Winner (7-digits/code), all 2nd Prize Winners (5-digits), all 3rd Prize Winners (4-digits), all 4th Prize Winners (4-digits), and all 5th Prize Winners (4-digits) from the provided lottery result image. Combine all numbers for prizes 2 through 5 into a single comma-separated string each.";
+
+            const payload = {
+                contents: [
+                    {
+                        role: "user",
+                        parts: [
+                            { text: userQuery },
+                            {
+                                inlineData: {
+                                    mimeType: mimeType,
+                                    data: base64Data
+                                }
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            "drawTime": { "type": "STRING", "description": "The draw time found in the image, e.g., '1 PM' or '6 PM'." },
+                            "firstPrize": { "type": "STRING", "description": "The 1st prize winning number/code (e.g., 79E33057)" },
+                            "secondPrize": { "type": "STRING", "description": "A comma-separated list of all 2nd prize winning numbers (5-digits)." },
+                            "thirdPrize": { "type": "STRING", "description": "A comma-separated list of all 3rd prize winning numbers (4-digits)." },
+                            "fourthPrize": { "type": "STRING", "description": "A comma-separated list of all 4th prize winning numbers (4-digits)." },
+                            "fifthPrize": { "type": "STRING", "description": "A comma-separated list of all 5th prize winning numbers (4-digits)." }
+                        }
+                    }
+                },
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            try {
+                const result = await callGeminiApi(payload);
+                const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                
+                if (!jsonText) {
+                    throw new Error("Model response was empty or incorrectly structured.");
+                }
+
+                const parsedData = JSON.parse(jsonText);
+                
+                // Pre-fill fields with extracted data
+                if (parsedData.drawTime) {
+                    const detectedTime = parsedData.drawTime.toUpperCase().replace(/\s/g, ''); 
+                    const options = Array.from(drawTimeField.options).map(opt => opt.value.toUpperCase().replace(/\s/g, ''));
+                    
+                    if (options.includes(detectedTime)) {
+                        drawTimeField.value = parsedData.drawTime; 
+                    } else {
+                        drawTimeField.value = 'Other'; 
+                    }
+                } else {
+                    drawTimeField.value = 'Other';
+                }
+
+                if (parsedData.firstPrize) { firstPrizeField.value = parsedData.firstPrize.trim(); }
+                if (parsedData.secondPrize) { secondPrizeField.value = parsedData.secondPrize.trim(); }
+                if (parsedData.thirdPrize) { thirdPrizeField.value = parsedData.thirdPrize.trim(); }
+                if (parsedData.fourthPrize) { fourthPrizeField.value = parsedData.fourthPrize.trim(); }
+                if (parsedData.fifthPrize) { fifthPrizeField.value = parsedData.fifthPrize.trim(); }
+
+                showMessage(extractionMessage, 'Numbers extracted successfully! Review them below and click "Save".', false);
+
+            } catch (e) {
+                console.error("Extraction Error:", e);
+                showMessage(extractionMessage, 'Extraction failed. Please check the console for errors or enter the numbers manually.', true);
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        // Event handler for the extract button
+        extractButton.addEventListener('click', () => {
+            const file = imageUpload.files[0];
+            if (!file) {
+                showMessage(extractionMessage, 'Please select an image file first.', true);
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const base64Data = event.target.result.split(',')[1];
+                const mimeType = file.type;
+                extractDataFromImage(base64Data, mimeType);
+            };
+            reader.onerror = function() {
+                showMessage(extractionMessage, 'Error reading file.', true);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Enable button when a file is selected
+        imageUpload.addEventListener('change', () => {
+            extractButton.disabled = imageUpload.files.length === 0;
+            extractionMessage.classList.add('hidden');
+        });
+
+        // --- Data Saving and History Logic ---
+        
+        function parseNumbers(input) {
+            // Remove any non-alphanumeric characters except commas and whitespace, then split and filter empty strings
+            return input
+                .replace(/[^0-9,\sA-Za-z]/g, '') 
+                .split(/[\s,]+/)
+                .filter(n => n.length > 0)
+                .map(n => n.trim());
+        }
+
+        function saveResult(result) {
+    try {
+        // --- Save to main history (for this app) ---
+        const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        history.unshift(result);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        
+        // --- Save to a separate key for the customer app ---
+        const customerAppResult = {
+            date: result.date,
+            results: Object.entries(result.prizes).map(([categoryStr, numbers]) => {
+                const amountMatch = categoryStr.match(/\(([^)]+)\)/);
+                const amount = amountMatch ? amountMatch[1] : 'N/A';
+                const category = categoryStr.split('(')[0].trim();
+                return {
+                    category: category,
+                    numbers: numbers.join(','),
+                    amount: amount
+                };
+            })
+        };
+        const customerAppKey = `lotteryResult_${result.date}_${result.time.replace(' ', '')}`;
+        localStorage.setItem(customerAppKey, JSON.stringify(customerAppResult));
+
+        showMessage(messageBox, `Draw results successfully saved for ${result.date} (${result.time})`, false);
+        renderHistory();
+    } catch (e) {
+        console.error("Error saving to local storage:", e);
+        showMessage(messageBox, 'Error saving data. Storage might be full.', true);
+    }
+}
+
+        function handleSubmit(e) {
+            e.preventDefault();
+            messageBox.classList.add('hidden');
+
+            const date = document.getElementById('drawDate').value;
+            const time = drawTimeField.value.trim();
+            const firstPrizeRaw = firstPrizeField.value.trim();
+            
+            const secondPrizeNumbers = parseNumbers(secondPrizeField.value);
+            const thirdPrizeNumbers = parseNumbers(thirdPrizeField.value);
+            const fourthPrizeNumbers = parseNumbers(fourthPrizeField.value);
+            const fifthPrizeNumbers = parseNumbers(fifthPrizeField.value); // The list to validate
+            
+            if (!date || !time || !firstPrizeRaw) {
+                showMessage(messageBox, 'Please ensure the Draw Date, Time, and 1st Prize Number are entered.', true);
+                return;
+            }
+
+            // --- MANDATORY 5TH PRIZE VALIDATION ---
+            if (fifthPrizeNumbers.length !== MANDATORY_FIFTH_PRIZE_COUNT) {
+                showMessage(messageBox, `5th Prize Error: The 5th prize must contain exactly ${MANDATORY_FIFTH_PRIZE_COUNT} winning numbers. You entered ${fifthPrizeNumbers.length}. Please correct the list.`, true);
+                return; // Stop saving if validation fails
+            }
+
+            const newResult = {
+                id: Date.now(),
+                date: date,
+                time: time,
+                prizes: {
+                    '1st Prize (₹1 Crore)': [firstPrizeRaw],
+                    '2nd Prize (₹10,000)': secondPrizeNumbers,
+                    '3rd Prize (₹500)': thirdPrizeNumbers,
+                    '4th Prize (₹250)': fourthPrizeNumbers,
+                    '5th Prize (₹120)': fifthPrizeNumbers,
+                }
+            };
+            
+            saveResult(newResult);
+            // Clear fields after successful save
+            firstPrizeField.value = '';
+            secondPrizeField.value = '';
+            thirdPrizeField.value = '';
+            fourthPrizeField.value = '';
+            fifthPrizeField.value = '';
+            extractionMessage.classList.add('hidden');
+        }
+
+        function renderHistory() {
+            const history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+            if (history.length === 0) {
+                historyDisplay.innerHTML = '<p class="text-gray-500 italic">No draw history saved yet.</p>';
+                clearHistoryBtn.classList.add('hidden');
+                return;
+            }
+            
+            clearHistoryBtn.classList.remove('hidden');
+
+            let html = `
+                <table class="w-full prize-table rounded-xl overflow-hidden shadow-md">
+                    <thead>
+                        <tr>
+                            <th class="w-1/6">Date & Time</th>
+                            <th class="w-1/6">Prize Category & Count</th>
+                            <th class="w-4/6">Winning Numbers</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            history.forEach(draw => {
+                let firstRow = true;
+                const dateFormatted = new Date(draw.date).toLocaleDateString('en-GB', {
+                    day: 'numeric', month: 'short', year: 'numeric'
+                });
+                
+                const dateTimeHeader = `<span class="block text-lg font-bold">${dateFormatted}</span><span class="block text-sm text-blue-400">${draw.time}</span>`;
+
+                const prizeCategories = Object.keys(draw.prizes);
+                const rowSpan = prizeCategories.length;
+
+                prizeCategories.forEach((category, index) => {
+                    const numbers = draw.prizes[category];
+                    const count = numbers.length;
+                    
+                    html += `<tr class="prize-row">`;
+                    
+                    if (firstRow) {
+                        html += `<td rowspan="${rowSpan}" class="font-bold text-blue-600">${dateTimeHeader}</td>`;
+                        firstRow = false;
+                    }
+                    
+                    html += `
+                        <td>
+                            <div class="font-medium text-sm sm:text-base">${category}</div>
+                            <span class="mt-1 inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${count === MANDATORY_FIFTH_PRIZE_COUNT ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}">
+                                Total Winners: ${count}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="text-sm text-gray-800">${numbers.join(', ')}</span>
+                        </td>
+                    </tr>`;
+                });
+            });
+
+            html += '</tbody></table>';
+            historyDisplay.innerHTML = html;
+        }
+
+        function clearHistory() {
+            if (confirm("Are you sure you want to delete ALL saved draw history? This cannot be undone.")) {
+                localStorage.removeItem(STORAGE_KEY);
+                renderHistory();
+                showMessage(messageBox, 'All draw history has been cleared.', true);
+            }
+        }
+
+        // Initialization
+        form.addEventListener('submit', handleSubmit);
+        clearHistoryBtn.addEventListener('click', clearHistory);
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHistory();
+            document.getElementById('drawDate').valueAsDate = new Date();
+        });
+
+    </script>
+</body>
+</html>
+

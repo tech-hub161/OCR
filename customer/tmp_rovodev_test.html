@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Function Test</title>
+</head>
+<body>
+    <h3>Test Functions</h3>
+    <input type="text" id="test-purchase" placeholder="Test purchase formatting" style="width: 300px;">
+    <br><br>
+    <input type="text" id="test-unsold" placeholder="Test unsold auto-complete" style="width: 300px;">
+    <br><br>
+    <button onclick="testFunctions()">Test Functions</button>
+    <div id="result"></div>
+
+    <script>
+        // Test the core functions
+        function formatPurchaseInput(input) {
+            const cursorPosition = input.selectionStart;
+            let value = input.value.replace(/[^0-9,-]/g, '');
+            
+            let ranges = value.split(',');
+            let formattedRanges = [];
+            
+            for (let i = 0; i < ranges.length; i++) {
+                let range = ranges[i];
+                
+                if (range.includes('-')) {
+                    let parts = range.split('-');
+                    let firstPart = parts[0] || '';
+                    let secondPart = parts[1] || '';
+                    
+                    if (firstPart.length === 5 && secondPart.length >= 5) {
+                        if (secondPart.length === 5) {
+                            formattedRanges.push(firstPart + '-' + secondPart);
+                        } else if (secondPart.length > 5) {
+                            let completeRange = firstPart + '-' + secondPart.substring(0, 5);
+                            let extraDigits = secondPart.substring(5);
+                            formattedRanges.push(completeRange);
+                            
+                            if (extraDigits.length === 5 && i === ranges.length - 1) {
+                                formattedRanges.push(extraDigits + '-');
+                            } else {
+                                formattedRanges.push(extraDigits);
+                            }
+                        }
+                    } else {
+                        formattedRanges.push(range);
+                    }
+                } else {
+                    if (range.length === 5 && i === ranges.length - 1) {
+                        formattedRanges.push(range + '-');
+                    } else if (range.length === 10) {
+                        formattedRanges.push(range.substring(0, 5) + '-' + range.substring(5));
+                        if (i === ranges.length - 1) {
+                            formattedRanges.push('');
+                        }
+                    } else {
+                        formattedRanges.push(range);
+                    }
+                }
+            }
+            
+            let formattedValue = formattedRanges.join(',').replace(/,$/, '');
+            input.value = formattedValue;
+        }
+
+        // Test calculation
+        function testCalculation() {
+            // Test SEM calculation: 2 unsold tickets × SEM 5 = 10
+            const unsoldCount = 2;
+            const semValue = 5;
+            return unsoldCount * semValue; // Should return 10
+        }
+
+        function testFunctions() {
+            const purchaseInput = document.getElementById('test-purchase');
+            const unsoldInput = document.getElementById('test-unsold');
+            const result = document.getElementById('result');
+            
+            // Test purchase formatting
+            formatPurchaseInput(purchaseInput);
+            
+            // Test calculation
+            const calcResult = testCalculation();
+            
+            result.innerHTML = `
+                <p><strong>Purchase formatted:</strong> ${purchaseInput.value}</p>
+                <p><strong>Calculation test (2 × 5):</strong> ${calcResult}</p>
+                <p><strong>Expected:</strong> 10</p>
+            `;
+        }
+
+        // Add event listeners
+        document.getElementById('test-purchase').addEventListener('input', function() {
+            formatPurchaseInput(this);
+        });
+    </script>
+</body>
+</html>
