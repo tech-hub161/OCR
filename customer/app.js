@@ -1236,111 +1236,157 @@ const customerSummary = calculateCustomerSummary(customerData);
 
     }
 
-    function downloadAllCustomersPdf(reportKey) {
+    async function downloadAllCustomersPdf(reportKey) {
         const savedData = localStorage.getItem(reportKey);
         if (!savedData) return alert('Report data not found.');
 
         const allData = JSON.parse(savedData);
         const { date, drawTime } = parseReportKey(reportKey);
-
-        const container = document.createElement('div');
-        container.style.width = '1191px';
-        container.style.padding = '20px';
-        container.style.background = 'white';
-        let html = `<div style="font-family: sans-serif;">
-                <h2>All Customers Report</h2>
-                <h3>Date: ${date} (${drawTime})</h3>`;
-
         const customerNames = [...new Set(allData.map(r => r.name))];
 
-        customerNames.forEach((name, idx) => {
+        const jspdfObj = window.jspdf || window.jsPDF || window.jspdf;
+        const jsPDFClass = (jspdfObj && jspdfObj.jsPDF) ? jspdfObj.jsPDF : (window.jsPDF || null);
+        if (!jsPDFClass) {
+            alert('PDF library not loaded.');
+            return;
+        }
+
+        const pdf = new jsPDFClass('l', 'pt', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+
+        // helper: split purchase ranges into lines of 3 items for better PDF layout
+        function formatPurchaseForPdf(purchaseRanges) {
+            if (!purchaseRanges) return '';
+            const parts = String(purchaseRanges).split(',').map(s => s.trim()).filter(Boolean);
+            if (parts.length === 0) return '';
+            const chunks = [];
+            for (let i = 0; i < parts.length; i += 3) {
+                chunks.push(parts.slice(i, i + 3).join(','));
+            }
+            return chunks.join('<br>');
+        }
+
+        // Remaining vertical space on current page (in PDF pts)
+        let remainingHeight = pageHeight;
+        let isFirstPage = true;
+
+        for (let i = 0; i < customerNames.length; i++) {
+            const name = customerNames[i];
             const rows = allData.filter(r => r.name === name);
             const customerSummary = calculateCustomerSummary(rows);
 
-            html += `<div style="margin-bottom:40px;">
-                        <h3>Customer: ${name}</h3>
-                        <table style="width:100%; border-collapse:collapse; font-size:12pt;">
-                            <thead>
+            const html = `
+                <div style="font-family: sans-serif; width:1191px; padding:20px; background:white;">
+                    <style>
+                        .pdf-table { width:100%; border-collapse:collapse; font-size:12pt; table-layout: fixed; }
+                        .pdf-table th, .pdf-table td { border:1px solid #ddd; padding:8px; text-align:left; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }
+                        .col-sem { width:8%; }
+                        .col-purchase { width:34%; }
+                        .col-winning { width:30%; }
+                        .col-pwt { width:9%; }
+                        .col-vc { width:9%; }
+                        .col-svc { width:10%; }
+                    </style>
+                    <h3>Customer: ${name}</h3>
+                    <table class="pdf-table">
+                        <thead>
+                            <tr>
+                                <th class="col-sem">SEM</th>
+                                <th class="col-purchase">Purchase</th>
+                                <th class="col-winning">Winning Tickets</th>
+                                <th class="col-pwt">PWT</th>
+                                <th class="col-vc">VC</th>
+                                <th class="col-svc">SVC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(row => `
                                 <tr>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">SEM</th>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">Purchase</th>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">Winning Tickets</th>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">PWT</th>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">VC</th>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">SVC</th>
+                                    <td class="col-sem">${row.sem}</td>
+                                    <td class="col-purchase">${formatPurchaseForPdf(row.purchaseRanges)}</td>
+                                    <td class="col-winning">${formatWinningTicketsForPopup(row.winningTickets)}</td>
+                                    <td class="col-pwt">${(row.pwtBreakdown || []).join('<br>')}</td>
+                                    <td class="col-vc">${(row.vcBreakdown || []).join('<br>')}</td>
+                                    <td class="col-svc">${(row.svcBreakdown || []).join('<br>')}</td>
                                 </tr>
-                            </thead>
-                            <tbody>`;
+                            `).join('')}
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th class="col-sem">Total</th>
+                                <th class="col-purchase">${customerSummary.totalPurchase}</th>
+                                <th class="col-winning">${customerSummary.totalWinningTickets}</th>
+                                <th class="col-pwt">${customerSummary.totalPWT.toLocaleString('en-IN')}</th>
+                                <th class="col-vc">${customerSummary.totalVC.toLocaleString('en-IN')}</th>
+                                <th class="col-svc">${customerSummary.totalSVC.toLocaleString('en-IN')}</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>`;
 
-            rows.forEach(row => {
-                html += `
-                    <tr>
-                        <td style="border:1px solid #ddd; padding:8px;">${row.sem}</td>
-                        <td style="border:1px solid #ddd; padding:8px;">${row.purchaseRanges || ''}</td>
-                        <td style="border:1px solid #ddd; padding:8px;">${formatWinningTicketsForPopup(row.winningTickets)}</td>
-                        <td style="border:1px solid #ddd; padding:8px;">${(row.pwtBreakdown || []).join('<br>')}</td>
-                        <td style="border:1px solid #ddd; padding:8px;">${(row.vcBreakdown || []).join('<br>')}</td>
-                        <td style="border:1px solid #ddd; padding:8px;">${(row.svcBreakdown || []).join('<br>')}</td>
-                    </tr>`;
-            });
+            const container = document.createElement('div');
+            container.style.width = '1191px';
+            container.style.padding = '20px';
+            container.style.background = 'white';
+            container.style.position = 'fixed';
+            container.style.left = '-20000px'; // keep off-screen
+            container.innerHTML = html;
+            document.body.appendChild(container);
 
-            html += `
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">Total</th>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">${customerSummary.totalPurchase}</th>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">${customerSummary.totalWinningTickets}</th>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">${customerSummary.totalPWT.toLocaleString('en-IN')}</th>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">${customerSummary.totalVC.toLocaleString('en-IN')}</th>
-                                    <th style="border:1px solid #ddd; padding:8px; text-align:left">${customerSummary.totalSVC.toLocaleString('en-IN')}</th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>`;
-        });
+            try {
+                const canvas = await html2canvas(container, { scale: 1 });
+                // use JPEG output at reduced quality to reduce PDF size
+                const imgData = canvas.toDataURL('image/jpeg', 0.75);
+                const imgWidthPdf = pageWidth;
+                const imgHeightPdf = canvas.height * pageWidth / canvas.width;
 
-        html += `</div>`;
-        container.innerHTML = html;
+                // If customer block is taller than a single page, always start on a fresh page
+                if (imgHeightPdf > pageHeight) {
+                    if (remainingHeight !== pageHeight) {
+                        pdf.addPage();
+                    }
 
-        document.body.appendChild(container);
+                    // Split the tall image across multiple pages
+                    let heightLeft = imgHeightPdf;
+                    let position = 0;
+                    const consumedOnLastPage = imgHeightPdf % pageHeight;
 
-        html2canvas(container, { scale: 2 }).then(canvas => {
-            const imgData = canvas.toDataURL('image/png');
-            const jspdfObj = window.jspdf || window.jsPDF || window.jspdf;
-            const jsPDFClass = (jspdfObj && jspdfObj.jsPDF) ? jspdfObj.jsPDF : (window.jsPDF || null);
-            if (!jsPDFClass) {
-                alert('PDF library not loaded.');
+                    while (heightLeft > 0) {
+                        pdf.addImage(imgData, 'JPEG', 0, position, imgWidthPdf, imgHeightPdf);
+                        heightLeft -= pageHeight;
+                        position -= pageHeight;
+                        if (heightLeft > 0) pdf.addPage();
+                    }
+
+                    // compute remaining space on last page
+                    const consumed = consumedOnLastPage === 0 ? pageHeight : consumedOnLastPage;
+                    remainingHeight = pageHeight - consumed;
+                    if (remainingHeight < 0) remainingHeight = 0;
+                    isFirstPage = false;
+                } else {
+                    // Customer block fits within single page
+                    if (imgHeightPdf <= remainingHeight) {
+                        // place on current page at y = pageHeight - remainingHeight
+                        const yPos = pageHeight - remainingHeight;
+                        pdf.addImage(imgData, 'JPEG', 0, yPos, imgWidthPdf, imgHeightPdf);
+                        remainingHeight -= imgHeightPdf;
+                    } else {
+                        // move to next page and place at top
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidthPdf, imgHeightPdf);
+                        remainingHeight = pageHeight - imgHeightPdf;
+                    }
+                    isFirstPage = false;
+                }
+            } catch (err) {
+                console.error('Error rendering customer to canvas:', err);
+            } finally {
                 document.body.removeChild(container);
-                return;
             }
+        }
 
-            const pdf = new jsPDFClass('l', 'pt', 'a4');
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = pageWidth;
-            const imgHeight = canvas.height * pageWidth / canvas.width;
-
-            let heightLeft = imgHeight;
-            let position = 0;
-
-            pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-
-            while (heightLeft > 0) {
-                position -= pageHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-            }
-
-            pdf.save(`all-customers-${date}-${drawTime}.pdf`);
-            document.body.removeChild(container);
-        }).catch(err => {
-            console.error('Error generating PDF:', err);
-            document.body.removeChild(container);
-            alert('Failed to generate PDF.');
-        });
+        pdf.save(`all-customers-${date}-${drawTime}.pdf`);
     }
 
     // --- Event Handlers ---
