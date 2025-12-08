@@ -60,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchUnsoldNumbersInput = document.getElementById('search-unsold-numbers-input');
     const submitSearchUnsoldBtn = document.getElementById('submit-search-unsold-btn');
     const searchUnsoldResultsContainer = document.getElementById('search-unsold-results-container');
+    const backupBtn = document.getElementById('backup-btn');
+    const restoreBtn = document.getElementById('restore-btn');
+    const backupFileInput = document.getElementById('backup-file-input');
 
     // --- State Management ---
     let tableData = [];
@@ -995,6 +998,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
         alert(`Customer data for ${reportDate} (${reportDrawTime}) saved successfully!\nCustomers: ${reportData.length}\nKey: ${reportKey}`);
         loadAndRenderReportCards(reportDate);
+    }
+
+    // --- Backup / Restore Functions ---
+    function exportLocalStorageBackup() {
+        const data = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            data[key] = localStorage.getItem(key);
+        }
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ocrapp-backup-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'_')}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    function importLocalStorageBackup(obj) {
+        if (!confirm('This will overwrite current saved data in localStorage. Continue?')) return;
+        localStorage.clear();
+        Object.keys(obj).forEach(k => localStorage.setItem(k, obj[k]));
+        alert('Restore complete. Reloading page.');
+        location.reload();
+    }
+
+    if (typeof backupBtn !== 'undefined' && backupBtn) {
+        backupBtn.addEventListener('click', () => exportLocalStorageBackup());
+    }
+    if (typeof restoreBtn !== 'undefined' && restoreBtn) {
+        restoreBtn.addEventListener('click', () => { if (backupFileInput) backupFileInput.click(); });
+    }
+    if (typeof backupFileInput !== 'undefined' && backupFileInput) {
+        backupFileInput.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const parsed = JSON.parse(evt.target.result);
+                    importLocalStorageBackup(parsed);
+                } catch (err) {
+                    alert('Invalid backup file.');
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+        });
     }
 
     function loadData(date, drawTime) {
